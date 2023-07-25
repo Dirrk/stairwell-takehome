@@ -21,10 +21,10 @@ spec:
         - name: entrypoint-container
           # It's totally fine to store the image in a container registry.
           # If so, you'll probably want to change the image and pull policy.
-          image: stairwell/entrypoint
-          imagePullPolicy: Never
+          image: 359294263934.dkr.ecr.us-west-2.amazonaws.com/app/stairwell-entrypoint:latest
+          imagePullPolicy: Always
           args:
-            - --uri=https://stairwell.com/robots.txt # TODO(candidate): Change this.
+            - --uri=http://worker-stairwell.rada.world:3000/
           ports:
             - protocol: TCP
               containerPort: 8080
@@ -35,14 +35,49 @@ kind: Service
 metadata:
   namespace: stairwell
   name: entrypoint-service
-# With this service definition, you'll be able to reach the server from your local machine.
-# However, you may want to set up some sort of ingress to expose it to the public.
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: entrypoint
   ports:
     - protocol: TCP
       name: http-server
       targetPort: http-server
-      port: 42069
+      port: 42069 # LUL
+---
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: stairwell-tls
+  namespace: stairwell
+spec:
+  secretName: stairwell-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - 'stairwell.rada.world'
+
+---
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: stairwell
+  namespace: stairwell
+spec:
+  entryPoints:
+    - public
+    - web
+    - websecure
+  routes:
+    - match: Host(`stairwell.rada.world`)
+      kind: Rule
+      services:
+        - name: entrypoint-service
+          kind: Service
+          port: 42069
+          scheme: http
+  tls:
+    secretName: stairwell-tls

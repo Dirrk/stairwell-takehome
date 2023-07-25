@@ -1,0 +1,9 @@
+[Unit]
+Description=Generator
+
+[Service]
+Restart=on-failure
+ExecStart=/usr/bin/python3 /opt/stairwell/generator/latest/generator.py
+
+[Install]
+WantedBy=multi-user.target
